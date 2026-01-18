@@ -1,46 +1,69 @@
 import itertools
 import random
+# itertools: combinations waghera banane ke kaam aata hai (AI logic mein use hota hai)
+# random: random numbers generate karne ke liye (mines random place karne ke liye)
 
 
 class Minesweeper():
     """
-    Minesweeper game representation
+    Minesweeper game ka representation
+    Yeh class actual game board aur mines handle karti hai
     """
 
     def __init__(self, height=8, width=8, mines=8):
 
-        # Set initial width, height, and number of mines
+        # Board ki height (rows) set kar rahe hain
         self.height = height
+
+        # Board ki width (columns) set kar rahe hain
         self.width = width
+
+        # Mines ko ek set mein store karenge (unique cells)
         self.mines = set()
 
-        # Initialize an empty field with no mines
+        # Board initialize kar rahe hain (2D list)
+        # False ka matlab: is cell mein mine nahi hai
         self.board = []
-        for i in range(self.height):
+        for i in range(self.height):        # har row ke liye
             row = []
-            for j in range(self.width):
-                row.append(False)
+            for j in range(self.width):     # har column ke liye
+                row.append(False)           # initially sab cells safe
             self.board.append(row)
 
-        # Add mines randomly
+        # Random jagah par mines add kar rahe hain
+        # Jab tak required mines add na ho jayein
         while len(self.mines) != mines:
+
+            # Random row select
             i = random.randrange(height)
+
+            # Random column select
             j = random.randrange(width)
+
+            # Agar is cell mein pehle mine nahi hai
             if not self.board[i][j]:
+
+                # Mine ka coordinate set mein add kar do
                 self.mines.add((i, j))
+
+                # Board par bhi mark kar do ke yahan mine hai
                 self.board[i][j] = True
 
-        # At first, player has found no mines
+        # Player ne abhi tak koi mine find nahi ki
         self.mines_found = set()
 
     def print(self):
         """
-        Prints a text-based representation
-        of where mines are located.
+        Text-based board print karta hai
+        X = mine
+        blank = empty cell
+        (Debugging / samajhne ke liye)
         """
         for i in range(self.height):
             print("--" * self.width + "-")
             for j in range(self.width):
+
+                # Agar cell mein mine hai
                 if self.board[i][j]:
                     print("|X", end="")
                 else:
@@ -49,29 +72,33 @@ class Minesweeper():
         print("--" * self.width + "-")
 
     def is_mine(self, cell):
+        # Cell ke coordinates nikal lo
         i, j = cell
+
+        # Board se check karo ke mine hai ya nahi
         return self.board[i][j]
 
     def nearby_mines(self, cell):
         """
-        Returns the number of mines that are
-        within one row and column of a given cell,
-        not including the cell itself.
+        Diye gaye cell ke aas paas (8 neighbors)
+        kitni mines hain, woh count karta hai
         """
 
-        # Keep count of nearby mines
+        # Nearby mines ka counter
         count = 0
 
-        # Loop over all cells within one row and column
+        # Cell ke around 3x3 grid check kar rahe hain
         for i in range(cell[0] - 1, cell[0] + 2):
             for j in range(cell[1] - 1, cell[1] + 2):
 
-                # Ignore the cell itself
+                # Apne aap ko ignore karo
                 if (i, j) == cell:
                     continue
 
-                # Update count if cell in bounds and is mine
+                # Check karo cell board ke andar hai
                 if 0 <= i < self.height and 0 <= j < self.width:
+
+                    # Agar us jagah mine hai
                     if self.board[i][j]:
                         count += 1
 
@@ -79,127 +106,155 @@ class Minesweeper():
 
     def won(self):
         """
-        Checks if all mines have been flagged.
+        Game jeetne ki condition:
+        Jo mines actual hain, wohi mines player ne find ki hon
         """
         return self.mines_found == self.mines
 
 
 class Sentence():
     """
-    Logical statement about a Minesweeper game
-    A sentence consists of a set of board cells,
-    and a count of the number of those cells which are mines.
+    Logical sentence jo AI ke knowledge base ka hissa hoti hai
+
+    Example:
+    {(1,2), (1,3), (2,2)} = 1
+    Matlab: in 3 cells mein se 1 mine hai
     """
 
     def __init__(self, cells, count):
+
+        # Cells ka set (coordinates)
         self.cells = set(cells)
+
+        # Batata hai ke in cells mein kitni mines hain
         self.count = count
 
     def __eq__(self, other):
+        # Do sentences tab equal hain
+        # jab cells aur count dono same hon
         return self.cells == other.cells and self.count == other.count
 
     def __str__(self):
+        # Sentence ko readable string mein convert karta hai
         return f"{self.cells} = {self.count}"
 
     def known_mines(self):
         """
-        Returns the set of all cells in self.cells known to be mines.
+        Yeh function logically decide karega
+        kaun se cells definitely mines hain
+
+        (Abhi implement nahi hai)
         """
         raise NotImplementedError
 
     def known_safes(self):
         """
-        Returns the set of all cells in self.cells known to be safe.
+        Yeh function logically decide karega
+        kaun se cells definitely safe hain
+
+        (Abhi implement nahi hai)
         """
         raise NotImplementedError
 
     def mark_mine(self, cell):
         """
-        Updates internal knowledge representation given the fact that
-        a cell is known to be a mine.
+        Jab AI ko pata chal jaye ke koi cell mine hai,
+        toh is sentence se us cell ko remove karega
+        aur count kam karega
+
+        (Abhi implement nahi hai)
         """
         raise NotImplementedError
 
     def mark_safe(self, cell):
         """
-        Updates internal knowledge representation given the fact that
-        a cell is known to be safe.
+        Jab koi cell safe prove ho jaye,
+        toh sentence se remove kar diya jata hai
+
+        (Abhi implement nahi hai)
         """
         raise NotImplementedError
 
 
 class MinesweeperAI():
     """
-    Minesweeper game player
+    Yeh class AI player ko represent karti hai
+    Jo logical reasoning se game khelta hai
     """
 
     def __init__(self, height=8, width=8):
 
-        # Set initial height and width
+        # Board dimensions
         self.height = height
         self.width = width
 
-        # Keep track of which cells have been clicked on
+        # Jo moves AI already kar chuka hai
         self.moves_made = set()
 
-        # Keep track of cells known to be safe or mines
+        # Cells jo definitely mines hain
         self.mines = set()
+
+        # Cells jo definitely safe hain
         self.safes = set()
 
-        # List of sentences about the game known to be true
+        # Knowledge base (Sentence objects ki list)
         self.knowledge = []
 
     def mark_mine(self, cell):
         """
-        Marks a cell as a mine, and updates all knowledge
-        to mark that cell as a mine as well.
+        Kisi cell ko mine mark karta hai
+        aur har sentence ko update karta hai
         """
         self.mines.add(cell)
+
+        # Har sentence ko bata do ke yeh mine hai
         for sentence in self.knowledge:
             sentence.mark_mine(cell)
 
     def mark_safe(self, cell):
         """
-        Marks a cell as safe, and updates all knowledge
-        to mark that cell as safe as well.
+        Kisi cell ko safe mark karta hai
+        aur knowledge base update karta hai
         """
         self.safes.add(cell)
+
+        # Har sentence ko bata do ke yeh safe hai
         for sentence in self.knowledge:
             sentence.mark_safe(cell)
 
     def add_knowledge(self, cell, count):
         """
-        Called when the Minesweeper board tells us, for a given
-        safe cell, how many neighboring cells have mines in them.
+        Jab AI koi safe cell open karta hai
+        aur game batata hai ke paas kitni mines hain
 
-        This function should:
-            1) mark the cell as a move that has been made
-            2) mark the cell as safe
-            3) add a new sentence to the AI's knowledge base
-               based on the value of `cell` and `count`
-            4) mark any additional cells as safe or as mines
-               if it can be concluded based on the AI's knowledge base
-            5) add any new sentences to the AI's knowledge base
-               if they can be inferred from existing knowledge
+        Steps (sirf description):
+        1) move record karo
+        2) cell ko safe mark karo
+        3) new logical sentence banao
+        4) new safes / mines infer karo
+        5) new sentences derive karo
+
+        (Logic abhi implement nahi)
         """
         raise NotImplementedError
 
     def make_safe_move(self):
         """
-        Returns a safe cell to choose on the Minesweeper board.
-        The move must be known to be safe, and not already a move
-        that has been made.
+        Koi aisa move return kare
+        jo:
+        - safe ho
+        - pehle choose na kiya ho
 
-        This function may use the knowledge in self.mines, self.safes
-        and self.moves_made, but should not modify any of those values.
+        (Abhi implement nahi)
         """
         raise NotImplementedError
 
     def make_random_move(self):
         """
-        Returns a move to make on the Minesweeper board.
-        Should choose randomly among cells that:
-            1) have not already been chosen, and
-            2) are not known to be mines
+        Random move kare:
+        - jo pehle choose na ho
+        - jo mine known na ho
+
+        (Abhi implement nahi)
         """
         raise NotImplementedError
