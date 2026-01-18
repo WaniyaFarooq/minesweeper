@@ -1,69 +1,33 @@
 import itertools
 import random
-# itertools: combinations waghera banane ke kaam aata hai (AI logic mein use hota hai)
-# random: random numbers generate karne ke liye (mines random place karne ke liye)
-
 
 class Minesweeper():
-    """
-    Minesweeper game ka representation
-    Yeh class actual game board aur mines handle karti hai
-    """
-
     def __init__(self, height=8, width=8, mines=8):
-
-        # Board ki height (rows) set kar rahe hain
         self.height = height
-
-        # Board ki width (columns) set kar rahe hain
         self.width = width
-
-        # Mines ko ek set mein store karenge (unique cells)
         self.mines = set()
-
-        # Board initialize kar rahe hain (2D list)
-        # False ka matlab: is cell mein mine nahi hai
         self.board = []
-        for i in range(self.height):        # har row ke liye
+        
+        for i in range(self.height):
             row = []
-            for j in range(self.width):     # har column ke liye
-                row.append(False)           # initially sab cells safe
+            for j in range(self.width):
+                row.append(False)
             self.board.append(row)
-
-        # Random jagah par mines add kar rahe hain
-        # Jab tak required mines add na ho jayein
+        
         while len(self.mines) != mines:
-
-            # Random row select
             i = random.randrange(height)
-
-            # Random column select
             j = random.randrange(width)
-
-            # Agar is cell mein pehle mine nahi hai
+            
             if not self.board[i][j]:
-
-                # Mine ka coordinate set mein add kar do
                 self.mines.add((i, j))
-
-                # Board par bhi mark kar do ke yahan mine hai
                 self.board[i][j] = True
-
-        # Player ne abhi tak koi mine find nahi ki
+        
         self.mines_found = set()
 
     def print(self):
-        """
-        Text-based board print karta hai
-        X = mine
-        blank = empty cell
-        (Debugging / samajhne ke liye)
-        """
         for i in range(self.height):
             print("--" * self.width + "-")
             for j in range(self.width):
-
-                # Agar cell mein mine hai
                 if self.board[i][j]:
                     print("|X", end="")
                 else:
@@ -72,171 +36,165 @@ class Minesweeper():
         print("--" * self.width + "-")
 
     def is_mine(self, cell):
-        # Cell ke coordinates nikal lo
         i, j = cell
-
-        # Board se check karo ke mine hai ya nahi
         return self.board[i][j]
 
     def nearby_mines(self, cell):
-        """
-        Diye gaye cell ke aas paas (8 neighbors)
-        kitni mines hain, woh count karta hai
-        """
-
-        # Nearby mines ka counter
         count = 0
-
-        # Cell ke around 3x3 grid check kar rahe hain
         for i in range(cell[0] - 1, cell[0] + 2):
             for j in range(cell[1] - 1, cell[1] + 2):
-
-                # Apne aap ko ignore karo
                 if (i, j) == cell:
                     continue
-
-                # Check karo cell board ke andar hai
                 if 0 <= i < self.height and 0 <= j < self.width:
-
-                    # Agar us jagah mine hai
                     if self.board[i][j]:
                         count += 1
-
         return count
 
     def won(self):
-        """
-        Game jeetne ki condition:
-        Jo mines actual hain, wohi mines player ne find ki hon
-        """
         return self.mines_found == self.mines
 
 
 class Sentence():
-    """
-    Logical sentence jo AI ke knowledge base ka hissa hoti hai
-
-    Example:
-    {(1,2), (1,3), (2,2)} = 1
-    Matlab: in 3 cells mein se 1 mine hai
-    """
-
     def __init__(self, cells, count):
-
-        # Cells ka set (coordinates)
         self.cells = set(cells)
-
-        # Batata hai ke in cells mein kitni mines hain
         self.count = count
 
     def __eq__(self, other):
-        # Do sentences tab equal hain
-        # jab cells aur count dono same hon
         return self.cells == other.cells and self.count == other.count
 
     def __str__(self):
-        # Sentence ko readable string mein convert karta hai
         return f"{self.cells} = {self.count}"
 
     def known_mines(self):
-        """
-        Yeh function logically decide karega
-        kaun se cells definitely mines hain
-
-        (Abhi implement nahi hai)
-        """
-        raise NotImplementedError
+        if len(self.cells) == self.count and len(self.cells) > 0:
+            return set(self.cells)
+        return set()
 
     def known_safes(self):
-        """
-        Yeh function logically decide karega
-        kaun se cells definitely safe hain
-
-        (Abhi implement nahi hai)
-        """
-        raise NotImplementedError
+        if self.count == 0:
+            return set(self.cells)
+        return set()
 
     def mark_mine(self, cell):
-        """
-        Jab AI ko pata chal jaye ke koi cell mine hai,
-        toh is sentence se us cell ko remove karega
-        aur count kam karega
-
-        (Abhi implement nahi hai)
-        """
-        raise NotImplementedError
+        if cell in self.cells:
+            self.cells.remove(cell)
+            self.count -= 1
 
     def mark_safe(self, cell):
-        """
-        Jab koi cell safe prove ho jaye,
-        toh sentence se remove kar diya jata hai
-
-        (Abhi implement nahi hai)
-        """
-        raise NotImplementedError
+        if cell in self.cells:
+            self.cells.remove(cell)
 
 
 class MinesweeperAI():
-    """
-    Yeh class AI player ko represent karti hai
-    Jo logical reasoning se game khelta hai
-    """
-
     def __init__(self, height=8, width=8):
-
-        # Board dimensions
         self.height = height
         self.width = width
-
-        # Jo moves AI already kar chuka hai
         self.moves_made = set()
-
-        # Cells jo definitely mines hain
         self.mines = set()
-
-        # Cells jo definitely safe hain
         self.safes = set()
-
-        # Knowledge base (Sentence objects ki list)
         self.knowledge = []
 
     def mark_mine(self, cell):
-        """
-        Kisi cell ko mine mark karta hai
-        aur har sentence ko update karta hai
-        """
         self.mines.add(cell)
-
-        # Har sentence ko bata do ke yeh mine hai
         for sentence in self.knowledge:
             sentence.mark_mine(cell)
 
     def mark_safe(self, cell):
-        """
-        Kisi cell ko safe mark karta hai
-        aur knowledge base update karta hai
-        """
         self.safes.add(cell)
-
-        # Har sentence ko bata do ke yeh safe hai
         for sentence in self.knowledge:
             sentence.mark_safe(cell)
 
     def add_knowledge(self, cell, count):
-        """
-        Jab AI koi safe cell open karta hai
-        aur game batata hai ke paas kitni mines hain
+        # Step 1: Move record karo
+        self.moves_made.add(cell)
+        
+        # Step 2: Cell ko safe mark karo
+        self.mark_safe(cell)
+        
+        # Step 3: New sentence create karo (neighbors ke liye)
+        i, j = cell
+        neighbors = set()
+        
+        for row in range(i-1, i+2):
+            for col in range(j-1, j+2):
+                if (row, col) == cell:
+                    continue
+                if 0 <= row < self.height and 0 <= col < self.width:
+                    neighbors.add((row, col))
+        
+        # Step 4: Adjust count - jo mines already pata hain unhe subtract karo
+        mine_count = 0
+        for neighbor in list(neighbors):
+            if neighbor in self.mines:
+                mine_count += 1
+                neighbors.remove(neighbor)
+            elif neighbor in self.safes:
+                neighbors.remove(neighbor)
+        
+        # New sentence add karo
+        if len(neighbors) > 0:
+            new_sentence = Sentence(neighbors, count - mine_count)
+            self.knowledge.append(new_sentence)
+        
+        # Step 5: Inference karo (new mines/safes find karo)
+        self.update_knowledge()
+        
+        # Step 6: Subset inference karo
+        self.infer_from_subsets()
 
-        Steps (sirf description):
-        1) move record karo
-        2) cell ko safe mark karo
-        3) new logical sentence banao
-        4) new safes / mines infer karo
-        5) new sentences derive karo
+    def update_knowledge(self):
+        """Knowledge base se new safes aur mines find karta hai"""
+        
+            
+            # Knowledge base ko clean karo (empty sentences remove karo)
+        self.knowledge = [s for s in self.knowledge if len(s.cells) > 0]
+            
+            # Har sentence se safes aur mines nikalo
+        for sentence in self.knowledge:
+                known_mines = sentence.known_mines()
+                known_safes = sentence.known_safes()
+                
+                # Mark karo jo cells mines hain
+                for mine in list(known_mines):
+                    if mine not in self.mines:
+                        self.mark_mine(mine)
+                        
+                
+                # Mark karo jo cells safe hain
+                for safe in list(known_safes):
+                    if safe not in self.safes:
+                        self.mark_safe(safe)
+                        
 
-        (Logic abhi implement nahi)
-        """
-        raise NotImplementedError
+    def infer_from_subsets(self):
+        """Subset inference rule use karta hai"""
+        new_sentences = []
+        
+        for i in range(len(self.knowledge)):
+            for j in range(len(self.knowledge)):
+                if i == j:
+                    continue
+                
+                sentence1 = self.knowledge[i]
+                sentence2 = self.knowledge[j]
+                
+                # Check karo ke sentence1, sentence2 ka subset hai
+                if sentence1.cells.issubset(sentence2.cells):
+                    new_cells = sentence2.cells - sentence1.cells
+                    new_count = sentence2.count - sentence1.count
+                    
+                    if len(new_cells) > 0:
+                        new_sentence = Sentence(new_cells, new_count)
+                        if new_sentence not in self.knowledge:
+                            new_sentences.append(new_sentence)
+        
+        # Add new sentences to knowledge base
+        for sentence in new_sentences:
+            self.knowledge.append(sentence)
+        
+        # Fir se update karo agar new sentences add hue hain
+        if new_sentences:
+            self.update_knowledge()
 
     def make_safe_move(self):
         """
@@ -244,17 +202,28 @@ class MinesweeperAI():
         jo:
         - safe ho
         - pehle choose na kiya ho
-
-        (Abhi implement nahi)
         """
-        raise NotImplementedError
+        for cell in self.safes:
+            if cell not in self.moves_made and cell not in self.mines:
+                return cell
+        return None
 
     def make_random_move(self):
         """
         Random move kare:
         - jo pehle choose na ho
         - jo mine known na ho
-
-        (Abhi implement nahi)
         """
-        raise NotImplementedError
+        possible_moves = []
+        
+        for i in range(self.height):
+            for j in range(self.width):
+                cell = (i, j)
+                if (cell not in self.moves_made and 
+                    cell not in self.mines):
+                    possible_moves.append(cell)
+        
+        if not possible_moves:
+            return None
+        
+        return random.choice(possible_moves)
